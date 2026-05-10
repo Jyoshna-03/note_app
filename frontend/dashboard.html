@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="app-header">
+    <h1>My Notes</h1>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span id="user-name" style="font-size:14px;color:#888;"></span>
+      <button class="btn-sm" id="logout-btn">Sign out</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="composer">
+      <input type="text" id="note-title" placeholder="Title" />
+      <textarea id="note-body" placeholder="Write something…"></textarea>
+      <div class="composer-footer">
+        <button class="btn-save" id="save-btn">Save note</button>
+      </div>
+    </div>
+
+    <div class="notes-grid" id="notes-grid">
+      <div class="empty">Loading…</div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    requireLogin();
+
+    const user = getUser();
+    document.getElementById('user-name').textContent = user.name || user.email;
+    document.getElementById('logout-btn').addEventListener('click', logout);
+
+    async function loadNotes() {
+      const notes = await getNotes();
+      const grid  = document.getElementById('notes-grid');
+
+      if (!notes || !notes.length) {
+        grid.innerHTML = '<div class="empty">No notes yet. Write your first one above.</div>';
+        return;
+      }
+
+      grid.innerHTML = notes.map(n => `
+        <div class="note-card">
+          <h3>${esc(n.title)}</h3>
+          <p>${esc(n.body || '')}</p>
+          <div class="note-footer">
+            <span>${formatDate(n.created_at)}</span>
+            <button class="btn-del" onclick="handleDelete('${n.id}')">×</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function handleDelete(id) {
+      if (!confirm('Delete this note?')) return;
+      await deleteNote(id);
+      loadNotes();
+    }
+
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      const title = document.getElementById('note-title').value.trim();
+      const body  = document.getElementById('note-body').value.trim();
+
+      if (!title) {
+        alert('Please enter a title.');
+        return;
+      }
+
+      const btn = document.getElementById('save-btn');
+      btn.textContent = 'Saving…';
+      btn.disabled = true;
+
+      const result = await createNote(title, body);
+
+      btn.textContent = 'Save note';
+      btn.disabled = false;
+
+      if (result.error) {
+        alert('Error: ' + result.error);
+      } else {
+        document.getElementById('note-title').value = '';
+        document.getElementById('note-body').value  = '';
+        loadNotes();
+      }
+    });
+
+    loadNotes();
+  </script>
+</body>
+</html>
